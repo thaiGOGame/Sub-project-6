@@ -15,6 +15,7 @@ export default function CreateAnAccountScreen({ navigation }) {
   const [selectedCountry, setSelectedCountry] = useState('vn');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
 
   const data = [
     {
@@ -46,10 +47,10 @@ export default function CreateAnAccountScreen({ navigation }) {
     const regex = selectedCountryData.regex;
     if (regex.test(phoneNumber)) {
       // Navigate to HomeScreen if phone number is valid
-      navigation.navigate('Home Screen');
+      navigation.navigate('Search Home Screen');
     } else {
-      // Optionally, show an alert or feedback to the user
-      alert('Please enter a valid phone number.');
+      // Show error modal if phone number is invalid
+      setIsErrorModalVisible(true);
     }
   };
 
@@ -97,7 +98,7 @@ export default function CreateAnAccountScreen({ navigation }) {
 
           {/* Continue with Apple */}
           <TouchableOpacity
-            onPress={() => navigation.navigate('Home Screen')}
+            onPress={() => navigation.navigate('Search Home Screen')}
             style={[styles.apple_button, mainStyle.row_center_flex]}>
             <Image
               source={require('../assets/images/icons/apple.svg')}
@@ -108,7 +109,7 @@ export default function CreateAnAccountScreen({ navigation }) {
 
           {/* Continue with Facebook */}
           <TouchableOpacity
-            onPress={() => navigation.navigate('Home Screen')}
+            onPress={() => navigation.navigate('Search Home Screen')}
             style={[styles.facebook_button, mainStyle.row_center_flex]}>
             <Image
               source={require('../assets/images/icons/facebook.svg')}
@@ -119,7 +120,7 @@ export default function CreateAnAccountScreen({ navigation }) {
 
           {/* Continue with Google */}
           <TouchableOpacity
-            onPress={() => navigation.navigate('Home Screen')}
+            onPress={() => navigation.navigate('Search Home Screen')}
             style={[styles.google_button, mainStyle.row_center_flex]}>
             <Image
               source={require('../assets/images/icons/google.svg')}
@@ -143,7 +144,7 @@ export default function CreateAnAccountScreen({ navigation }) {
           { width: '100%', alignSelf: 'flex-end' },
         ]}>
         <Text>Already have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Home Screen')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Search Home Screen')}>
           <Text style={styles.log_in}>Log in</Text>
         </TouchableOpacity>
       </View>
@@ -171,6 +172,21 @@ export default function CreateAnAccountScreen({ navigation }) {
               onPress={() => setIsModalVisible(false)}
               style={styles.closeButton}>
               <Text style={styles.closeButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal for error message */}
+      <Modal visible={isErrorModalVisible} transparent={true} animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Invalid Phone Number</Text>
+            <Text>Please enter a valid phone number.</Text>
+            <TouchableOpacity
+              onPress={() => setIsErrorModalVisible(false)}
+              style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -282,29 +298,22 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 5,
   },
-  buttonText: {
-    color: 'black',
-    marginLeft: 10,
-  },
-  log_in: {
-    color: 'aqua',
-    textDecorationLine: 'underline',
-  },
   icon: {
-    width: 20,
-    height: 20,
-    marginRight: 10,
+    width: 24,
+    height: 24,
+    marginRight: 8,
   },
   appleText: {
     color: 'black',
-    marginLeft: 10,
   },
   facebookText: {
     color: 'blue',
-    marginLeft: 10,
   },
   googleText: {
     color: 'red',
-    marginLeft: 10,
+  },
+  log_in: {
+    color: 'blue',
+    fontWeight: 'bold',
   },
 });

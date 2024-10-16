@@ -38,6 +38,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  col_flex: {
+    flexDirection: 'column',
+  },
+  space_between:{
+    justifyContent:'space-between'
+  },
   column_left_flex: {
     flexDirection: 'column',
     justifyContent: 'center',
@@ -45,6 +51,9 @@ const styles = StyleSheet.create({
   },
   space_between_flex: {
     justifyContent: 'space-between',
+  },
+  space_around_flex: {
+    justifyContent: 'space-around',
   },
   bold_text:{
     fontWeight: "bold",
