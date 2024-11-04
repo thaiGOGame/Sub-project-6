@@ -60,7 +60,7 @@ const Reviews = ({ navigation, reviewsCount, rating }) => {
       </View>
       <View style={styles.ratingContainer}>
         <Text style={styles.ratingText}>
-          <Text style={styles.boldRating}>{rating}</Text>/5
+          <Text style={styles.boldRating}>{reviewsCount} reviews</Text>
         </Text>
       </View>
       <FlatList

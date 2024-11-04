@@ -5,16 +5,18 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Alert
+  Alert,
+  Image,
 } from 'react-native';
 
-const FacilitiesAndServices = ({ navigation, item }) => {
-  // Destructure properties from item
+const FacilitiesAndServices = ({ navigation, accommodation }) => {
   const {
     facilities,
-    totalGuests,
-    roomsAndBeds: { bedroom, beds, bathroom },
-  } = item;
+    total_guests,
+    bedroom,
+    beds,
+    bathroom,
+  } = accommodation;
 
   // Mapping of facilities to Unicode characters or emojis
   const iconMap = {
@@ -27,14 +29,13 @@ const FacilitiesAndServices = ({ navigation, item }) => {
 
   const facilitiesData =
     facilities?.map((facility) => ({
-      icon: iconMap[facility.toLowerCase()] || '❓', // Default icon if not found
-      title: facility.charAt(0).toUpperCase() + facility.slice(1), // Capitalize the first letter
+      icon: iconMap[facility.icon] || '❓', // Use icon from formatted facilities
+      title: facility.title, // Already formatted
     })) || [];
 
   // Function to handle the Show All button press
   const toggleShowAll = () => {
-    Alert.alert('Navigating to Facilities And Services Screen');
-    navigation.navigate('Facilities And Services Screen', { item });
+    navigation.navigate('Facilities And Services Screen', { accommodation });
   };
 
   return (
@@ -42,7 +43,7 @@ const FacilitiesAndServices = ({ navigation, item }) => {
       <Text style={styles.sectionTitle}>Facilities & Services</Text>
       <View style={[styles.summaryContainer, { marginLeft: 5 }]}>
         <Text style={styles.summaryText}>
-          {totalGuests} guest{totalGuests !== 1 && 's'}, {beds} bed
+          {total_guests} guest{total_guests !== 1 && 's'}, {beds} bed
           {beds !== 1 && 's'}, {bedroom} bedroom{bedroom !== 1 && 's'},{' '}
           {bathroom} bathroom{bathroom !== 1 && 's'}
         </Text>
@@ -91,6 +92,19 @@ const styles = StyleSheet.create({
   summaryText: {
     fontSize: 14,
   },
+  descriptionText: {
+    fontSize: 14,
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  detailsText: {
+    fontSize: 14,
+    marginBottom: 5,
+  },
+  locationText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
   showAllButton: {
     marginTop: 10,
     paddingVertical: 10,
@@ -104,6 +118,12 @@ const styles = StyleSheet.create({
   showAllText: {
     color: 'black',
     fontSize: 16,
+  },
+  image: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+    marginBottom: 10,
   },
 });
 

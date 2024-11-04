@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,51 +7,60 @@ import {
   Modal,
   StyleSheet,
 } from 'react-native';
+import mainStyle from '../assets/stylesheet/StyleSheet.js';
 
-const Description = ({ item }) => {
+const Description = ({ accommodation }) => {
   const [showModal, setShowModal] = useState(false);
+  const [accommodationDetails, setAccommodationDetails] = useState(null);
 
-  const moreInfo = {
-    description:
-      'Looking for the perfect place to relax and unwind? This stunning Balinese villa is the ultimate tropical getaway.',
-    details:
-      'Located on a quiet street just minutes from the beach, this villa offers a private pool, fully equipped kitchen, and spacious living area. Perfect for families or groups of friends.',
-  };
+  // Load accommodation description data from the API
+  useEffect(() => {
+    const fetchAccommodationDescription = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/accommodation_descriptions/${accommodation.id}`);
+        const data = await response.json();
+        setAccommodationDetails(data);
+      } catch (error) {
+        console.error('Error fetching accommodation descriptions:', error);
+      }
+    };
+
+    fetchAccommodationDescription();
+  }, [accommodation.id]); // Reload when accommodation.id changes
 
   const handleViewMore = () => {
     setShowModal(true);
   };
 
-  const {
-    facilities,
-    totalGuests,
-    roomsAndBeds: { bedroom, beds, bathroom },
-  } = item;
+  // Check if accommodationDetails is loaded
+  if (!accommodationDetails) {
+    return <Text>Loading...</Text>;
+  }
+
+  const { bedroom, beds, bathroom } = accommodation; // Get bedroom, beds, bathroom from accommodation
+  const { description, details, image_path } = accommodationDetails; // Get description and details from accommodationDetails
 
   return (
     <View style={styles.container}>
-      <Image source={item.image} style={styles.image} />
+      <Image source={{ uri: image_path }} style={styles.image} />
       <Text style={styles.title}>Description</Text>
-      <Text style={styles.description}>{moreInfo.description}</Text>
-      {/* Original modal trigger */}
+      <Text style={styles.description}>{description}</Text>
       <TouchableOpacity style={styles.viewMoreButton} onPress={handleViewMore}>
         <Text style={styles.viewMoreText}>View more</Text>
       </TouchableOpacity>
 
       <Modal visible={showModal} animationType="slide">
         <View style={styles.modalContainer}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Image source={item.image} style={styles.image} />
-          <Text style={styles.details}>{moreInfo.details}</Text>
+          <Text style={styles.title}>{accommodation.title}</Text>
+          <Image source={{ uri: image_path }} style={styles.image} />
+          <Text style={styles.details}>{details}</Text>
           <Text style={{ fontSize: 14 }}>
-            {totalGuests} guest{totalGuests !== 1 && 's'}, {beds} bed
-            {beds !== 1 && 's'}, {bedroom} bedroom{bedroom !== 1 && 's'},{' '}
-            {bathroom} bathroom{bathroom !== 1 && 's'}
+            {accommodation.total_guests} guest{accommodation.total_guests !== 1 && 's'}, {beds} bed
+            {beds !== 1 && 's'}, {bedroom} bedroom{bedroom !== 1 && 's'}, {bathroom} bathroom{bathroom !== 1 && 's'}
           </Text>
-          {/* Inserted interface */}
           <View style={styles.infoRow}>
             <Text style={styles.location}>
-              <Text style={styles.locationIcon}>📍</Text> Bali, Indonesia
+              <Text style={styles.locationIcon}>📍</Text> {accommodation.location}
             </Text>
             <TouchableOpacity>
               <Text style={styles.openMap}>Open map</Text>
@@ -60,16 +69,13 @@ const Description = ({ item }) => {
 
           <View style={styles.bulletPoints}>
             <Text style={styles.bullet}>✔ Consectetur magna consectetur</Text>
-            <Text style={styles.bullet}>
-              ✔ Voluptate magna fugiat tempor incididunt
-            </Text>
-            <Text style={styles.bullet}>
-              ✔ Aliqua in in mollit laboris tempor in ut incididunt
-            </Text>
+            <Text style={styles.bullet}>✔ Voluptate magna fugiat tempor incididunt</Text>
+            <Text style={styles.bullet}>✔ Aliqua in in mollit laboris tempor in ut incididunt</Text>
           </View>
           <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setShowModal(false)}>
+            style={mainStyle.aqua_button}
+            onPress={() => setShowModal(false)}
+          >
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
         </View>

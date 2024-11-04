@@ -35,61 +35,66 @@ export default function LocationDetailScreen({ navigation, route }) {
   for (let i = 0; i < randomReviewsCount; i++) {
     totalRating += Math.floor(Math.random() * 5) + 1; // Random rating between 1 and 5
   }
-  const facilitiesData =
-    item.facilities?.map((facility) => ({
-      icon: facility.toLowerCase(), // Ensure facility names match icon names
-      title: facility.charAt(0).toUpperCase() + facility.slice(1), // Capitalize the first letter
-    })) || [];
+  const averageRating = totalRating / randomReviewsCount; // Calculate average rating
+
+  // Parse the facilities from the JSON string to an array
+  const facilitiesData = item.facilities ? JSON.parse(item.facilities) : [];
+
+  const formattedFacilitiesData = facilitiesData.map((facility) => ({
+    icon: facility.toLowerCase(), // Ensure facility names match icon names
+    title: facility.charAt(0).toUpperCase() + facility.slice(1), // Capitalize the first letter
+  }));
 
   return (
     <View style={styles.container}>
       {/* Back Button */}
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => navigation.navigate('Search Home Screen')}>
+        onPress={() => navigation.navigate('Search Home Screen')}
+      >
         <Ionicons name="arrow-back" size={24} color="white" />
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Image section */}
-        <Image source={item.image} style={styles.image} />
+        <Image source={{ uri: item.image_path }} style={styles.image} />
 
         {/* General Info Section */}
         <GeneralLocationInfo
           item={item}
           navigation={navigation}
           reviews={randomReviewsCount}
-          rating={item.rating}
+          rating={averageRating} // Pass the calculated average rating
         />
 
         {/* Separator Line */}
         <View style={styles.separator} />
-        <FacilitiesAndServices item={item} navigation={navigation} />
+        <FacilitiesAndServices accommodation={{ ...item, facilities: formattedFacilitiesData }} navigation={navigation} />
         {/* Separator Line */}
         <View style={styles.separator} />
         {/* Pass randomReviewsCount and averageRating to Reviews */}
         <Reviews
           navigation={navigation}
           reviewsCount={randomReviewsCount}
-          rating={item.rating}
+          rating={averageRating} // Pass the calculated average rating
         />
         {/* Separator Line */}
         <View style={styles.separator} />
-        {/* Pass randomReviewsCount and averageRating to Reviews */}
         <Policies />
         <View style={styles.separator} />
-        {/* Pass randomReviewsCount and averageRating to Reviews */}
-        <Description item={item} />
+        {/* Pass item to Description */}
+        <Description accommodation={item} />
       </ScrollView>
 
       {/* Fixed Footer */}
       <View style={styles.footer}>
-        <Text style={styles.footerPrice}>{item.price}</Text>
+        <Text style={styles.footerPrice}>{item.price}</Text> {/* Added dollar sign for price */}
         <TouchableOpacity
           style={styles.bookNowButton}
           onPress={() =>
             navigation.navigate('Confirm And Pay Screen', { item, navigation })
-          }>
+          }
+        >
           <Text style={styles.bookNowText}>Book Now</Text>
         </TouchableOpacity>
       </View>

@@ -1,81 +1,48 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import mainStyle from '../assets/stylesheet/StyleSheet.js';
+import BottomNavigation from '../assets/components/BottomNavigation';
 
-const ProfileHomeScreen = ({ navigation }) => {
-  const [hovered, setHovered] = useState(false); // State to manage hover effect
-  const studentName = "Lương Quốc Thái"; // Replace with student name
-  const studentId = "123456"; // Replace with student ID
-  const projectTitle = "Traveling Booking App";
+const ProfileHomeScreen = ({ navigation, user }) => {
+  const [hovered, setHovered] = useState(false);
 
   return (
     <View style={mainStyle.container}>
-      <Pressable
-        style={[styles.profileContainer, hovered && styles.profileContainerHovered]} // Apply hover style
-        onPressIn={() => setHovered(true)} // Set hover state to true on press in
-        onPressOut={() => setHovered(false)} // Set hover state to false on press out
+      <TouchableOpacity
+        style={[styles.profileContainer, hovered && styles.profileContainerHovered]}
+        onPressIn={() => setHovered(true)}
+        onPressOut={() => setHovered(false)}
+        onPress={() => navigation.navigate("Change Information Screen",{user})}
       >
         <Image
-          source={require('../assets/images/logos/thaiGO-logo.png')} // Replace with avatar path
+          source={user?.image_path ? { uri: user.image_path } : require('../assets/images/icons/default-avatar.png')}
           style={styles.avatar}
         />
-        <Text style={styles.name}>{studentName}</Text>
-        <Text style={styles.studentId}>Student ID: {studentId}</Text>
-        <Text style={styles.projectTitle}>Project Title: {projectTitle}</Text>
+        <Text style={mainStyle.bold_text}>{user?.full_name || "Guest User"}</Text>
+        <Text style={mainStyle.text}>Email: {user?.email || "Not provided"}</Text>
+        <Text style={mainStyle.text}>Phone: {user?.phone_number || "Not provided"}</Text>
+        <Text style={mainStyle.text}>Nation: {user?.nation || "Not provided"}</Text>
         <Text style={styles.footerText}>Made by IUH TPHCM 2024</Text>
-      </Pressable>
+      </TouchableOpacity>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.logoutButton,
-          pressed && styles.logoutButtonPressed,
-        ]}
+      <TouchableOpacity
+        style={[mainStyle.aqua_button, styles.buttonSpacing]}
+        onPress={() => navigation.navigate("Change Password Screen",{user})}
+      >
+        <Text style={mainStyle.button_text}>Change Password</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.logoutButton}
         onPress={() => {
-          // Add logout logic here
-          console.log('Logging out');
+          navigation.navigate("Login Screen");
         }}
       >
         <Text style={styles.logoutText}>Log Out</Text>
-      </Pressable>
+      </TouchableOpacity>
 
-      {/* Bottom navigation */}
-      <View style={styles.bottomNav}>
-        <Pressable onPress={() => navigation.navigate('Search Home Screen')} style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}>
-          <Image
-            source={require('../assets/images/icons/search.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Search</Text>
-        </Pressable>
-        <Pressable onPress={() => navigation.navigate('Favorite Home Screen')} style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}>
-          <Image
-            source={require('../assets/images/icons/white_heart.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Favorites</Text>
-        </Pressable>
-        <Pressable onPress={() => navigation.navigate('Booking Home Screen')} style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}>
-          <Image
-            source={require('../assets/images/icons/booking.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Bookings</Text>
-        </Pressable>
-        <Pressable onPress={() => navigation.navigate('Inbox Home Screen')} style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}>
-          <Image
-            source={require('../assets/images/icons/inbox.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Inbox</Text>
-        </Pressable>
-        <Pressable onPress={() => navigation.navigate('Profile Home Screen')} style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}>
-          <Image
-            source={require('../assets/images/icons/profile.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navTextActive}>Profile</Text>
-        </Pressable>
-      </View>
+      {/* Add BottomNavigation component */}
+      <BottomNavigation navigation={navigation} />
     </View>
   );
 };
@@ -84,8 +51,8 @@ const styles = StyleSheet.create({
   profileContainer: {
     alignItems: 'center',
     marginVertical: 20,
-    flex: 1, // Allow this part to expand to take space
-    backgroundColor: '#f8f8f8', // Light background for profile section
+    flex: 1,
+    backgroundColor: '#f8f8f8',
     padding: 20,
     borderRadius: 10,
     shadowColor: '#000',
@@ -94,9 +61,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   profileContainerHovered: {
-    borderColor: '#00BCD4', // Aqua border color on hover
+    borderColor: '#00BCD4',
     borderWidth: 2,
-    shadowColor: '#00BCD4', // Shadow color on hover
+    shadowColor: '#00BCD4',
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
@@ -107,22 +74,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: '#00BCD4', // Aqua border for the avatar
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333', // Darker color for text
-  },
-  studentId: {
-    fontSize: 16,
-    color: 'gray',
-    marginBottom: 5,
-  },
-  projectTitle: {
-    fontSize: 16,
-    marginBottom: 5,
-    fontStyle: 'italic', // Italic style for project title
+    borderColor: '#00BCD4',
   },
   footerText: {
     fontSize: 14,
@@ -130,48 +82,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
   },
+  buttonSpacing: {
+    marginBottom: 15,
+  },
   logoutButton: {
     padding: 10,
     borderRadius: 5,
     marginVertical: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#d9534f', // Border color for logout button
-  },
-  logoutButtonPressed: {
-    backgroundColor: 'rgba(217, 83, 79, 0.1)', // Light red background when pressed
+    borderColor: '#d9534f',
   },
   logoutText: {
-    color: '#d9534f', // Color for logout text
-    fontWeight: 'bold',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-  },
-  navItem: {
-    alignItems: 'center',
-    padding: 5,
-  },
-  navItemPressed: {
-    backgroundColor: 'transparent', // No background on hover
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#00FF00', // Green border when hovered
-  },
-  navIcon: {
-    width: 24,
-    height: 24,
-    marginBottom: 5,
-  },
-  navText: {
-    color: '#888',
-  },
-  navTextActive: {
-    color: '#00BCD4', // Aqua color for active tab
+    color: '#d9534f',
     fontWeight: 'bold',
   },
 });

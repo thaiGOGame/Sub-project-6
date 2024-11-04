@@ -5,17 +5,22 @@ import {
   StyleSheet,
   Image,
   FlatList,
-  TouchableOpacity,Pressable
+  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import mainStyle from '../assets/stylesheet/StyleSheet.js';
-import FilterModal from './FilterModal'; // Adjust the path accordingly
-import { useIsFocused } from '@react-navigation/native'; // Import hook để kiểm tra trạng thái focus
+import FilterModal from './FilterModal';
+import { useIsFocused } from '@react-navigation/native';
+import BottomNavigation from '../assets/components/BottomNavigation';
 
+// Thay đổi tham số đầu vào
 export default function SearchHomeScreen({
   navigation,
   route,
-  data,
-  updateData,
+  accUserRelations = [],
+  user,
+  accommodations, // Sử dụng accommodations thay cho data
+  setAccUserRelations, // Thay đổi tên hàm cập nhật
 }) {
   const isFocused = useIsFocused();
   const {
@@ -41,10 +46,22 @@ export default function SearchHomeScreen({
   });
   useEffect(() => {
     if (isFocused) {
-      // Thực hiện hành động để tải lại dữ liệu (ví dụ: gọi API hoặc lấy dữ liệu từ props)
-      setItems(data); // Hoặc gọi hàm để tải lại data từ server
+      const updatedItems = accommodations.map((item) => {
+        const isFavourite = accUserRelations.some(
+          (relation) =>
+            relation.user_id === user.id &&
+            relation.acc_id === item.id &&
+            relation.is_favourite
+        );
+        return {
+          ...item,
+          favourite: isFavourite,
+        }; // Parse facilities
+      });
+      setItems(updatedItems);
     }
-  }, [isFocused, data]);
+  }, [isFocused, accommodations, accUserRelations]);
+
   useEffect(() => {
     if (route.params) {
       const { location, guests, when } = route.params;
@@ -69,19 +86,65 @@ export default function SearchHomeScreen({
   const closeModal = () => {
     setIsModalVisible(false);
   };
-  const [items, setItems] = useState(data); // Sử dụng data đã định nghĩa ở trên
+  const [items, setItems] = useState(accommodations); // Sử dụng data đã định nghĩa ở trên
   const [selectedLocations, setSelectedLocations] = useState([]);
   // Toggle favourite status function
-  const toggleFavourite = (id) => {
-    const updatedItems = items.map((item) => {
-      if (item.id === id) {
-        return { ...item, favourite: !item.favourite }; // Toggle favourite status
+  // Update the toggleFavourite function
+  const toggleFavourite = async (id) => {
+  try {
+    // Determine the new favourite status
+    const existingRelation = accUserRelations.find((item) => item.acc_id === id && item.user_id === user.id);
+    const newFavouriteStatus = existingRelation ? !existingRelation.is_favourite : true;
+
+    const data = {
+      user_id: user.id,
+      acc_id: id,
+      is_favourite: newFavouriteStatus,
+    };
+
+    const response = await fetch(
+      'http://localhost:5000/update-acc-relation',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       }
-      return item;
+    );
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || 'Error updating favourite status');
+    }
+
+    // Update state for accUserRelations
+    setAccUserRelations((prevRelations) => {
+      // If relation exists, update it; otherwise, add a new one
+      if (existingRelation) {
+        return prevRelations.map((relation) =>
+          relation.user_id === data.user_id && relation.acc_id === data.acc_id
+            ? { ...relation, ...data }
+            : relation
+        );
+      } else {
+        // Add new relation if it doesn't exist
+        return [...prevRelations, data];
+      }
     });
-    setItems(updatedItems); // Update state with modified items
-    updateData(updatedItems); // Cập nhật data gốc thông qua updateData
+
+  } catch (error) {
+    alert(error.message);
+  }
+};
+
+
+  // Ensure the getHeartIcon function reflects the immediate favorite status
+  const getHeartIcon = (userId, accId) => {
+    const item = items.find((i) => i.id === accId );
+    return item && item.favourite
+      ? require('../assets/images/icons/pink-heart.svg')
+      : require('../assets/images/icons/white_heart.svg');
   };
+
   useEffect(() => {
     if (route.params?.data) {
       setItems(route.params.data);
@@ -92,8 +155,9 @@ export default function SearchHomeScreen({
     (item) =>
       (selectedLocations.length === 0 ||
         selectedLocations.includes(item.type)) &&
-      (!filterByTaxInclusive || item.taxInclusive === false) // Lọc theo trường Tax-inclusive
+      (!filterByTaxInclusive || item.tax_inclusive === false) // Lọc theo trường Tax-inclusive
   );
+
   const filteredDataWithSearch = (() => {
     // Check if any search criteria are provided
     const hasSearchCriteria =
@@ -106,27 +170,44 @@ export default function SearchHomeScreen({
       return filteredData; // Return the original data if no search criteria are provided
     }
 
-    return filteredData.filter(
-      (item) =>
-        // Check condition for location
-        (location === 'Anywhere' ||
-          item.location.toLowerCase().includes(location.toLowerCase())) &&
-        // Check condition for number of guests
-        (guests === 'Add guests' ||
-          item.totalGuests >= (guests === 'Add guests' ? 0 : guests)) &&
-        // Check condition for dates
-        (when === 'Anytime' ||
-          (typeof when === 'string' &&
-            when !== 'No dates selected' &&
-            (() => {
-              const [startDate, endDate] = when.split(' to ');
-              return (
-                new Date(item.startDate) >= new Date(startDate) && // Item starts on or after the start date
-                new Date(item.startDate) <= new Date(endDate) // Item starts on or before the end date
-              );
-            })()))
-    );
+    return filteredData.filter((item) => {
+      // Check condition for location
+      const locationMatch =
+        location === 'Anywhere' ||
+        item.location.toLowerCase().includes(location.toLowerCase());
+
+      // Check condition for number of guests
+      const guestsMatch =
+        guests === 'Add guests' ||
+        item.total_guests >= (guests === 'Add guests' ? 0 : guests);
+
+      const datesMatch =
+        when === 'Anytime' ||
+        (typeof when === 'string' &&
+          when !== 'No dates selected' &&
+          (() => {
+            const [startDate, endDate] = when.split(' to ');
+
+            // Lấy itemStartDate và chuyển đổi sang ngày địa phương
+            const itemStartDate = new Date(item.start_date); // Lấy ngày từ item
+            const localItemDate = itemStartDate.toLocaleDateString('en-CA'); // Chuyển đổi sang định dạng ngày địa phương (YYYY-MM-DD)
+
+            // Lấy ngày bắt đầu và kết thúc
+            const localStartDate = new Date(startDate).toLocaleDateString(
+              'en-CA'
+            );
+            const localEndDate = new Date(endDate).toLocaleDateString('en-CA');
+
+            return (
+              localItemDate >= localStartDate && // So sánh ngày item với ngày bắt đầu
+              localItemDate <= localEndDate // So sánh ngày item với ngày kết thúc
+            );
+          })());
+
+      return locationMatch && guestsMatch && datesMatch;
+    });
   })();
+
   const filteredDataWithFilter = (() => {
     // Check if any filter criteria are provided
     const hasFilterCriteria =
@@ -148,7 +229,9 @@ export default function SearchHomeScreen({
 
     filteredDataWithSearch.forEach((item) => {
       // Extract room and bed data from item.roomsAndBeds
-      const { bedroom, beds, bathroom } = item.roomsAndBeds;
+      const bedroom = item.bedroom;
+      const beds = item.beds;
+      const bathroom = item.bathroom;
 
       // Initialize a flag to check if all conditions are met
       let allConditionsMet = true;
@@ -170,12 +253,12 @@ export default function SearchHomeScreen({
       ) {
         allConditionsMet = false;
       }
-
-      // Apply facility filters, compare lowercase and remove spaces
       Object.keys(filterCriteria.facilities).forEach((facility) => {
         const normalizedFacility = facility.toLowerCase().trim();
-        const itemFacilities = item.facilities.map((f) =>
-          f.toLowerCase().trim()
+
+        // Parse item.facilities từ JSON và chuẩn hóa các giá trị nếu là chuỗi
+        const itemFacilities = Object.values(JSON.parse(item.facilities)).map(
+          (f) => (typeof f === 'string' ? f.toLowerCase().trim() : '')
         );
 
         if (
@@ -203,7 +286,7 @@ export default function SearchHomeScreen({
 
       // Apply type filter (skip if empty or 'x'), compare lowercase without spaces
       const selectedType = filterCriteria.selectedType.toLowerCase().trim();
-      const itemType = item.typeOfPlace.toLowerCase().trim();
+      const itemType = item.type_of_place.toLowerCase().trim();
       if (
         !(
           selectedType === 'x' ||
@@ -236,14 +319,14 @@ export default function SearchHomeScreen({
       setSelectedLocations([...selectedLocations, locationType]);
     }
   };
+
   const renderItem = ({ item }) => (
     <Pressable
-        onMouseEnter={() => setHoveredId(item.id)}
-        onMouseLeave={() => setHoveredId(null)}
-      style={styles.card , hoveredId === item.id && styles.cardHovered}
-      onPress={() => navigation.navigate('Location Detail Screen', { item })} // Navigate to LocationDetailScreen
-    >
-      <Image source={item.image} style={styles.image} />
+      onMouseEnter={() => setHoveredId(item.id)}
+      onMouseLeave={() => setHoveredId(null)}
+      style={[styles.card, hoveredId === item.id && styles.cardHovered]}
+      onPress={() => navigation.navigate('Location Detail Screen', { item })}>
+      <Image source={{ uri: item.image_path }} style={styles.image} />
       <View style={styles.infoContainer}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>
@@ -255,16 +338,18 @@ export default function SearchHomeScreen({
           <Text style={styles.location}>{item.type}</Text>
           <Text style={styles.price}>{item.price}</Text>
         </View>
+        <Text style={styles.dateRange}>
+          Available from:{' '}
+          {new Date(item.start_date).toLocaleDateString('en-CA')} to{' '}
+          {new Date(item.end_date).toLocaleDateString('en-CA')}{' '}
+          {/* Display the date range */}
+        </Text>
       </View>
       <TouchableOpacity
         style={styles.favoriteIcon}
         onPress={() => toggleFavourite(item.id)}>
         <Image
-          source={
-            item.favourite
-              ? require('../assets/images/icons/pink-heart.svg') // Pink heart for favourites
-              : require('../assets/images/icons/white_heart.svg') // White heart for non-favourites
-          }
+          source={getHeartIcon(user.id, item.id)}
           style={styles.heartIcon}
         />
       </TouchableOpacity>
@@ -413,49 +498,7 @@ export default function SearchHomeScreen({
         contentContainerStyle={styles.list}
       />
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Search Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/search.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navTextActive}>Search</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Favorite Home Screen')}
-          style={styles.navItem}>
-          <Image
-            source={require('../assets/images/icons/white_heart.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Favorites</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Booking Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/booking.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Bookings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Inbox Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/inbox.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Inbox</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/profile.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNavigation navigation={navigation} />
     </View>
   );
 }
@@ -501,7 +544,7 @@ const styles = StyleSheet.create({
   list: {
     paddingVertical: 10,
     paddingHorizontal: 10,
-    gap:20
+    gap: 20,
   },
   card: {
     backgroundColor: '#fff',
@@ -551,28 +594,6 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
   },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navIcon: {
-    width: 24,
-    height: 24,
-    marginBottom: 5,
-  },
-  navText: {
-    color: '#888',
-  },
-  navTextActive: {
-    color: '#00BCD4',
-    fontWeight: 'bold',
-  },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -601,7 +622,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },cardHovered: {
+  },
+  cardHovered: {
     borderColor: '#00AEEF', // Viền đèn LED khi hover
     shadowColor: '#00AEEF',
     shadowOpacity: 0.8,

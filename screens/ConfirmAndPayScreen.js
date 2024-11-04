@@ -8,29 +8,60 @@ import {
   ScrollView,
   Modal,
   Alert,
+  TextInput,
 } from 'react-native';
 import { RadioButton } from 'react-native-paper';
+import { Picker } from '@react-native-picker/picker'; // Import the Picker
+
+import DateTimePicker from '@react-native-community/datetimepicker';
+import MessageModal from '../assets/components/MessageModal'; // Import the MessageModal
+import LoadingModal from '../assets/components/LoadingModal'; // Import the MessageModal
 
 const calculateNights = (startDate, endDate) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
-
   const differenceInTime = end.getTime() - start.getTime();
-  let nights = differenceInTime / (1000 * 3600 * 24);
-
-  const randomShift = Math.floor(Math.random() * 2);
-  nights += randomShift;
-
+  const nights = differenceInTime / (1000 * 3600 * 24);
   return Math.max(1, nights);
 };
 
-const ConfirmAndPayScreen = ({ navigation, route, paymentData }) => {
+const ConfirmAndPayScreen = ({
+  navigation,
+  route,
+  user,
+  accUserRelations,
+  setAccUserRelations,
+}) => {
   const { item } = route.params;
   const [paymentOption, setPaymentOption] = useState('full');
+  const [paymentMethod, setPaymentMethod] = useState('Credit card');
+  const [taxAmount, setTaxAmount] = useState(0);
   const [randomFees, setRandomFees] = useState([]);
   const [totalPrice, setTotalPrice] = useState(0);
   const [totalBasePrice, setTotalBasePrice] = useState(0);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [editDatesModalVisible, setEditDatesModalVisible] = useState(false);
+  const [editGuestsModalVisible, setEditGuestsModalVisible] = useState(false);
+  const [currentEndDate, setCurrentEndDate] = useState(new Date(item.end_date));
+  const [isLoading, setIsLoading] = useState(false); // State for loading modal
+  const [isError, setIsError] = useState(false); // State to determine error/success
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [message, setMessage] = useState(''); // State for message
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [currentTotalGuests, setCurrentTotalGuests] = useState(
+    item.total_guests
+  );
+
+  const handleEditDates = () => setEditDatesModalVisible(true);
+  const handleEditGuests = () => setEditGuestsModalVisible(true);
+
+  const saveNewEndDate = () => {
+    setEditDatesModalVisible(false);
+    setCurrentEndDate(newEndDate);
+  };
+  const saveNewTotalGuests = () => {
+    setEditGuestsModalVisible(false);
+    setCurrentTotalGuests(newTotalGuests);
+  };
 
   const randomFeeOptions = [
     { label: 'Cleaning fee', amount: 10 },
@@ -55,45 +86,131 @@ const ConfirmAndPayScreen = ({ navigation, route, paymentData }) => {
     const fees = getRandomFees();
     setRandomFees(fees);
 
-    const randomNights = calculateNights(item.startDate, item.endDate);
+    const randomNights = calculateNights(item.start_date, currentEndDate);
     const pricePerNight = parseInt(item.price.replace('$', ''));
-    const basePrice = pricePerNight * item.totalGuests * randomNights;
+    const basePrice = pricePerNight * currentTotalGuests * randomNights;
     const totalRandomFees = fees.reduce((total, fee) => total + fee.amount, 0);
 
-    const taxRate = item.taxInclusive ? 0 : Math.random() * (15 - 10) + 10; // 10% to 15% random tax
+    const taxRate = item.tax_inclusive ? 0 : 10; // For example, set a constant 12% rate
     const taxAmount = (basePrice + totalRandomFees) * (taxRate / 100);
 
     const total = basePrice + totalRandomFees + taxAmount;
     setTotalBasePrice(basePrice);
+    setTaxAmount(taxAmount);
     setTotalPrice(total);
-  }, [item]);
+  }, [item, currentEndDate, currentTotalGuests]);
+  const incrementDate = () => {
+    const nextDate = new Date(currentEndDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    if (nextDate <= new Date(item.end_date)) setCurrentEndDate(nextDate);
+  };
 
-  const handleBooking = () => {
-  const existingBooking = paymentData.find((payment) => payment.id === item.id);
+  const decrementDate = () => {
+    const prevDate = new Date(currentEndDate);
+    prevDate.setDate(prevDate.getDate() - 1);
+    if (prevDate >= new Date(item.start_date)) setCurrentEndDate(prevDate);
+  };
 
-  if (existingBooking) {
-    setModalVisible(true); // Hiển thị modal nếu địa điểm đã được đặt
-  } else {
-    // Thêm booking vào paymentData với ngày và giờ hiện tại
+  const incrementGuests = () => {
+    if (currentTotalGuests < item.total_guests)
+      setCurrentTotalGuests(currentTotalGuests + 1);
+  };
+
+  const decrementGuests = () => {
+    if (currentTotalGuests > 1) setCurrentTotalGuests(currentTotalGuests - 1);
+  };
+  const handleBooking = async () => {
+    // Getting the current date and time
     const now = new Date();
-    const date = now.toISOString().split('T')[0]; // Lấy ngày hiện tại (YYYY-MM-DD)
-    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); // Lấy giờ hiện tại (HH:MM AM/PM)
+    const date = now.toISOString().split('T')[0];
+    const time = now.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
-    paymentData.push({
-      id: item.id,
+    const bookingData = {
+      user_id: user.id,
+      acc_id: item.id,
+      is_favourite: accUserRelations.find((relation) => relation.user_id === user.id && relation.acc_id === item.id)?.is_favourite || false,
+      date,
+      time,
       amount: totalPrice.toFixed(2),
-      date: date,
-      time: time,
-    });
+      start_date: new Date(item.start_date).toISOString().split('T')[0], // Format date properly
+      end_date: currentEndDate.toISOString().split('T')[0], // Format date properly
+      guests: currentTotalGuests,
+      payment_option: paymentOption,
+    };
 
-    navigation.navigate('Payment Success Screen', {
-      amount: totalPrice,
-      refNumber: Math.random().toString(36).substring(2, 15), // Số tham chiếu ngẫu nhiên
-      itemID: item.id,
-    });
-  }
-};
+    setIsLoading(true); // Show loading modal
 
+    try {
+      // Check if there's an existing booking for the same accommodation
+      const existingBookingIndex = accUserRelations.findIndex(
+        (relation) => relation.acc_id === item.id && relation.user_id === user.id
+      );
+
+      const response = await fetch(
+        'http://localhost:5000/update-acc-relation',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bookingData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || 'Failed to update accommodation-user relation.'
+        );
+      }
+
+      // Update accUserRelations based on whether the booking already exists
+      setAccUserRelations((prevRelations) => {
+        if (existingBookingIndex !== -1) {
+          // If the booking exists, replace it
+          const updatedRelations = [...prevRelations];
+          updatedRelations[existingBookingIndex] = bookingData; // Replace the existing booking
+          return updatedRelations;
+        } else {
+          // If the booking doesn't exist, add a new one
+          return [...prevRelations, bookingData];
+        }
+      });
+
+      setIsSuccess(true); // Set success state
+      setMessage('Booking successfully!'); // Set success message
+    } catch (error) {
+      setMessage(error.message); // Set error message
+      setIsError(true); // Indicate error
+      console.error('Booking Error:', error.message); // Detailed logging in console
+    } finally {
+      setIsLoading(false); // Hide loading modal
+      setIsModalVisible(true); // Show modal for success/error feedback
+    }
+  };
+
+
+  const handleCloseModal = () => {
+    setIsModalVisible(false);
+    if (isSuccess)
+      navigation.navigate('Payment Success Screen', {
+        amount: totalPrice,
+        refNumber: 'U' + user.id + 'A' + item.id,
+        //itemID: item.id,
+        paymentMethod,
+        paymentOption,
+      });
+  };
+
+  const isFavourite = (userId, itemId, accUserRelations) => {
+    return accUserRelations.some(
+      (relation) =>
+        relation.user_id === userId &&
+        relation.acc_id === itemId &&
+        relation.is_favourite === true
+    );
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -109,7 +226,11 @@ const ConfirmAndPayScreen = ({ navigation, route, paymentData }) => {
           <Text style={styles.price}>{item.price}</Text>
           <Text style={styles.listingTitle}>{item.title}</Text>
           <Text style={styles.rating}>
-            ★ {item.rating} ({item.favourite ? 'Favourite' : 'Not Favourite'})
+            ★ {item.rating} (
+            {isFavourite(user.id, item.id, accUserRelations)
+              ? 'Favourite'
+              : 'Not Favourite'}
+            )
           </Text>
         </View>
         <Image source={item.image} style={styles.listingImage} />
@@ -120,18 +241,22 @@ const ConfirmAndPayScreen = ({ navigation, route, paymentData }) => {
         <View style={styles.tripDetailRow}>
           <View>
             <Text style={styles.tripDetailLabel}>Dates</Text>
-            <Text>{`${item.startDate} to ${item.endDate}`}</Text>
+            <Text>{`${new Date(item.start_date).toLocaleDateString(
+              'en-CA'
+            )} to ${new Date(currentEndDate).toLocaleDateString(
+              'en-CA'
+            )}`}</Text>
           </View>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleEditDates}>
             <Text style={styles.editButton}>✏️</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.tripDetailRow}>
           <View>
             <Text style={styles.tripDetailLabel}>Guests</Text>
-            <Text>{`${item.totalGuests} guest(s)`}</Text>
+            <Text>{`${currentTotalGuests} guest(s)`}</Text>
           </View>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleEditGuests}>
             <Text style={styles.editButton}>✏️</Text>
           </TouchableOpacity>
         </View>
@@ -170,50 +295,128 @@ const ConfirmAndPayScreen = ({ navigation, route, paymentData }) => {
       <View style={styles.priceDetailsContainer}>
         <Text style={styles.sectionTitle}>Price details</Text>
 
-        <View>
-          {randomFees.map((fee, index) => (
-            <View key={index} style={styles.priceRow}>
-              <Text style={styles.priceLabel}>{fee.label}</Text>
-              <Text>${fee.amount}</Text>
-            </View>
-          ))}
-        </View>
+        {/* Conditionally display random fees if full payment is selected */}
+        {paymentOption === 'full' && (
+          <View>
+            {randomFees.map((fee, index) => (
+              <View key={index} style={styles.priceRow}>
+                <Text style={styles.priceLabel}>{fee.label}</Text>
+                <Text>${fee.amount.toFixed(2)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
+        {/* Display core rate with calculation */}
         <View style={styles.priceRow}>
-          <Text style={styles.priceLabel}>{`${item.price} x ${item.totalGuests}`}</Text>
-          <Text>{`$${totalBasePrice.toFixed(2)}`}</Text>
+          <Text style={styles.priceLabel}>
+            {`$${item.price.replace(
+              '$',
+              ''
+            )} x ${currentTotalGuests} guests x ${calculateNights(
+              item.start_date,
+              currentEndDate
+            )} nights`}
+          </Text>
+          <Text>${totalBasePrice.toFixed(2)}</Text>
         </View>
 
-        {!item.taxInclusive && (
+        {/* Display tax amount */}
+        {paymentOption === 'full' && (
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Tax</Text>
-            <Text>{`$${((totalBasePrice + randomFees.reduce((total, fee) => total + fee.amount, 0)) * 0.1).toFixed(2)}`}</Text>
+            <Text>${taxAmount.toFixed(2)}</Text>
           </View>
         )}
 
         <View style={styles.priceRow}>
-          <Text style={styles.totalLabel}>Total (USD)</Text>
-          <Text style={styles.totalPrice}>${totalPrice.toFixed(2)}</Text>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalPrice}>
+            $
+            {paymentOption === 'full'
+              ? totalPrice.toFixed(2)
+              : totalBasePrice.toFixed(2)}
+          </Text>
         </View>
       </View>
-
-      <View style={styles.bookNowButtonContainer}>
-        <TouchableOpacity style={styles.bookNowButton} onPress={handleBooking}>
-          <Text style={styles.bookNowButtonText}>Book now</Text>
-        </TouchableOpacity>
+      {/* ComboBox for selecting payment method */}
+      <View style={styles.pickerContainer}>
+        <Text style={styles.sectionTitle}>Select Payment Method</Text>
+        <Picker
+          selectedValue={paymentMethod}
+          style={styles.picker}
+          onValueChange={(itemValue) => setPaymentMethod(itemValue)}>
+          <Picker.Item label="Credit Card" value="Credit card" />
+          <Picker.Item label="PayPal" value="PayPal" />
+          <Picker.Item label="Bank Transfer" value="Bank transfer" />
+          <Picker.Item label="Cash" value="Cash" />
+        </Picker>
       </View>
 
-      <Modal visible={modalVisible} transparent animationType="slide">
+      <TouchableOpacity style={styles.bookNowButton} onPress={handleBooking}>
+        <Text style={styles.bookNowButtonText}>Confirm and Pay</Text>
+      </TouchableOpacity>
+
+      <LoadingModal
+        isLoading={isLoading}
+        isError={isError}
+        isSuccess={isSuccess}
+        successMessage="Booking successfully!"
+        errorMessage={message}
+        onClose={() => setIsModalVisible(false)}
+      />
+
+      {/* Error Modal */}
+      <MessageModal
+        visible={isModalVisible}
+        onClose={handleCloseModal}
+        isError={isError}
+        message={message}
+      />
+
+      <Modal visible={editDatesModalVisible} animationType="slide">
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalText}>This place has already been booked!</Text>
+          <Text style={styles.modalTitle}>Edit End Date</Text>
+          <View style={styles.datePickerContainer}>
             <TouchableOpacity
-              style={styles.modalButton}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={styles.modalButtonText}>Close</Text>
+              onPress={decrementDate}
+              style={styles.arrowButton}>
+              <Text style={styles.arrowText}>{'<'}</Text>
+            </TouchableOpacity>
+            <Text style={styles.dateText}>{currentEndDate.toDateString()}</Text>
+            <TouchableOpacity
+              onPress={incrementDate}
+              style={styles.arrowButton}>
+              <Text style={styles.arrowText}>{'>'}</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity style={styles.modalButton} onPress={saveNewEndDate}>
+            <Text style={styles.modalButtonText}>Save</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      <Modal visible={editGuestsModalVisible} animationType="slide">
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Edit Guests</Text>
+          <View style={styles.guestPickerContainer}>
+            <TouchableOpacity
+              onPress={decrementGuests}
+              style={styles.arrowButton}>
+              <Text style={styles.arrowText}>{'-'}</Text>
+            </TouchableOpacity>
+            <Text style={styles.guestText}>{currentTotalGuests}</Text>
+            <TouchableOpacity
+              onPress={incrementGuests}
+              style={styles.arrowButton}>
+              <Text style={styles.arrowText}>{'+'}</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={styles.modalButton}
+            onPress={saveNewTotalGuests}>
+            <Text style={styles.modalButtonText}>Save</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </ScrollView>
@@ -243,6 +446,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 20,
   },
+
   listingInfo: {
     flex: 1,
     marginRight: 10,
@@ -263,7 +467,59 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 10,
+  }, // Updated styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 20,
+    borderRadius: 10,
   },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  datePickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  guestPickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  arrowButton: {
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#ddd',
+    marginHorizontal: 10,
+  },
+  arrowText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  dateText: {
+    fontSize: 16,
+  },
+  guestText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalButton: {
+    backgroundColor: '#00a',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    marginTop: 15,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+
   tripDetailsContainer: {
     marginBottom: 20,
   },
@@ -271,6 +527,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 10,
+  },
+  bookNowButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    backgroundColor: 'blue',
+    borderRadius: 5,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
   },
   tripDetailRow: {
     flexDirection: 'row',
@@ -303,6 +567,7 @@ const styles = StyleSheet.create({
   paymentOptionDescription: {
     fontSize: 14,
     color: 'gray',
+    flexShrink: 1,
   },
   priceDetailsContainer: {
     marginBottom: 20,
@@ -324,45 +589,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  bookNowButtonContainer: {
-    marginBottom: 20,
-  },
-  bookNowButton: {
-    backgroundColor: '#00a',
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 5,
-  },
   bookNowButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  modalText: {
-    fontSize: 16,
+  pickerContainer: {
     marginBottom: 20,
   },
-  modalButton: {
-    backgroundColor: '#00a',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 16,
+  picker: {
+    height: 50,
+    width: '100%',
+    borderColor: 'gray',
+    borderWidth: 1,
   },
 });
 

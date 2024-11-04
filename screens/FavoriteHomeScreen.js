@@ -1,42 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Image,
   FlatList,
-  TouchableOpacity, Pressable
+  TouchableOpacity,
+  Pressable,
+  Alert,
 } from 'react-native';
 import mainStyle from '../assets/stylesheet/StyleSheet.js';
+import BottomNavigation from '../assets/components/BottomNavigation';
+import { useIsFocused } from '@react-navigation/native';
 
-export default function FavoriteHomeScreen({ navigation, data, updateData }) {
-  const [items, setItems] = useState(data);
+export default function FavoriteHomeScreen({
+  navigation,
+  user,
+  accommodations,
+  accUserRelations = [], // Set default value to an empty array
+  setAccUserRelations,
+}) {
+  const [items, setItems] = useState(accommodations);
   const [hoveredId, setHoveredId] = useState(null);
-  const toggleFavourite = (id) => {
-    const updatedItems = items.map((item) => {
-      if (item.id === id) {
-        return { ...item, favourite: !item.favourite };
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      const favoriteItems = accommodations.filter((item) =>
+        accUserRelations.some(
+          (relation) =>
+            relation.user_id === user.id &&
+            relation.acc_id === item.id &&
+            relation.is_favourite == true
+        )
+      );
+      setItems(favoriteItems);
+    }
+  }, [isFocused, accommodations, accUserRelations]);
+
+  const toggleFavourite = async (id) => {
+  try {
+    // Determine the new favourite status
+    const existingRelation = accUserRelations.find((item) => item.acc_id === id && item.user_id === user.id);
+    const newFavouriteStatus = existingRelation ? !existingRelation.is_favourite : true;
+
+    const data = {
+      user_id: user.id,
+      acc_id: id,
+      is_favourite: newFavouriteStatus,
+    };
+
+    const response = await fetch(
+      'http://localhost:5000/update-acc-relation',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       }
-      return item;
+    );
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || 'Error updating favourite status');
+    }
+
+    // Update state for accUserRelations
+    setAccUserRelations((prevRelations) => {
+      // If relation exists, update it; otherwise, add a new one
+      if (existingRelation) {
+        return prevRelations.map((relation) =>
+          relation.user_id === data.user_id && relation.acc_id === data.acc_id
+            ? { ...relation, ...data }
+            : relation
+        );
+      } else {
+        // Add new relation if it doesn't exist
+        return [...prevRelations, data];
+      }
     });
 
-    setItems(updatedItems);
-    updateData(updatedItems); // Cập nhật data gốc
-  };
+  } catch (error) {
+    alert(error.message);
+  }
+};
 
-  const favoriteItems = items.filter((item) => item.favourite);
+  const getHeartIcon = (id) => {
+    const isFavourite = accUserRelations.some(
+      (relation) =>
+        relation.user_id === user.id &&
+        relation.acc_id === id &&
+        relation.is_favourite == true
+    );
+    return isFavourite
+      ? require('../assets/images/icons/pink-heart.svg') // Replace with actual heart images
+      : require('../assets/images/icons/white_heart.svg');
+  };
 
   const renderItem = ({ item }) => (
     <Pressable
       onMouseEnter={() => setHoveredId(item.id)}
       onMouseLeave={() => setHoveredId(null)}
-      style={[
-          styles.card,
-          hoveredId === item.id && styles.cardHovered,
-        ]}
-      onPress={() => navigation.navigate('Location Detail Screen', { item })} // Navigate to LocationDetailScreen
-    >
-      <Image source={item.image} style={styles.image} />
+      style={[styles.card, hoveredId === item.id && styles.cardHovered]}
+      onPress={() => navigation.navigate('Location Detail Screen', { item })}>
+      <Image source={item.image_path} style={styles.image} />
       <View style={styles.infoContainer}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>
@@ -53,11 +119,7 @@ export default function FavoriteHomeScreen({ navigation, data, updateData }) {
         style={styles.favoriteIcon}
         onPress={() => toggleFavourite(item.id)}>
         <Image
-          source={
-            item.favourite
-              ? require('../assets/images/icons/pink-heart.svg') // Pink heart for favourites
-              : require('../assets/images/icons/white_heart.svg') // White heart for non-favourites
-          }
+          source={getHeartIcon(item.id)} // Use the updated function to get the heart icon
           style={styles.heartIcon}
         />
       </TouchableOpacity>
@@ -68,58 +130,16 @@ export default function FavoriteHomeScreen({ navigation, data, updateData }) {
     <View style={mainStyle.container}>
       <Text style={styles.heading}>Place your favourite</Text>
       <FlatList
-        data={favoriteItems}
+        data={items} // Directly use the items state which already contains favorite items
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()} // Chắc chắn rằng id là chuỗi
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={true} // Hiển thị thanh cuộn
+        showsVerticalScrollIndicator={true}
       />
-      {favoriteItems.length === 0 && (
+      {items.length === 0 && (
         <Text style={styles.noFavoritesText}>No favorites added yet!</Text>
       )}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Search Home Screen')}
-          style={styles.navItem}>
-          <Image
-            source={require('../assets/images/icons/search.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Search</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Favorite Home Screen')}
-          style={styles.navItem}>
-          <Image
-            source={require('../assets/images/icons/white_heart.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navTextActive}>Favorites</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Booking Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/booking.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Bookings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Inbox Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/inbox.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Inbox</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/profile.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNavigation navigation={navigation} />
     </View>
   );
 }
@@ -128,7 +148,7 @@ const styles = StyleSheet.create({
   list: {
     paddingVertical: 10,
     paddingHorizontal: 10,
-    gap:20
+    gap: 20,
   },
   card: {
     backgroundColor: '#fff',
@@ -140,7 +160,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   cardHovered: {
-    borderColor: '#00AEEF', // Viền đèn LED khi hover
+    borderColor: '#00AEEF',
     shadowColor: '#00AEEF',
     shadowOpacity: 0.8,
     shadowRadius: 10,
@@ -185,27 +205,5 @@ const styles = StyleSheet.create({
   heartIcon: {
     width: 20,
     height: 20,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navIcon: {
-    width: 24,
-    height: 24,
-    marginBottom: 5,
-  },
-  navText: {
-    color: '#888',
-  },
-  navTextActive: {
-    color: '#00BCD4',
-    fontWeight: 'bold',
   },
 });

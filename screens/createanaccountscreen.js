@@ -10,33 +10,47 @@ import {
   FlatList,
 } from 'react-native';
 import mainStyle from '../assets/stylesheet/StyleSheet.js';
+import Flag from 'react-native-flags'; // Import the Flag component
 
 export default function CreateAnAccountScreen({ navigation }) {
-  const [selectedCountry, setSelectedCountry] = useState('vn');
+ const [selectedCountry, setSelectedCountry] = useState('Vietnam');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
 
   const data = [
     {
-      name: 'vn',
+      name: 'Vietnam',
       headNumber: '+84',
-      image: require('../assets/images/logos/vn.png'),
+      flagComponent: <Flag code="VN" size={24} />, // Using the Flag component
       regex: /^[0-9]{9,11}$/, // Adjust regex for Vietnam
     },
     {
-      name: 'usa',
+      name: 'United States',
       headNumber: '+1',
-      image: require('../assets/images/logos/usa.png'),
+      flagComponent: <Flag code="US" size={24} />, // Using the Flag component
       regex: /^[0-9]{10}$/, // Adjust regex for USA
+    },
+    {
+      name: 'Germany',
+      headNumber: '+49',
+      flagComponent: <Flag code="DE" size={24} />,
+      regex: /^[0-9]{10}$/, // Adjust regex for Germany
+    },
+    {
+      name: 'France',
+      headNumber: '+33',
+      flagComponent: <Flag code="FR" size={24} />,
+      regex: /^[0-9]{9}$/, // Adjust regex for France
     },
   ];
 
   const selectedCountryData = data.find(
     (country) => country.name === selectedCountry
   );
+  
   const phoneNumberInputPlaceholder =
-    selectedCountry === 'usa' ? '+1 phone number' : '+84 phone number';
+    selectedCountry === 'United States' ? '+1 phone number' : '+84 phone number';
 
   const handleCountrySelect = (country) => {
     setSelectedCountry(country.name);
@@ -46,14 +60,12 @@ export default function CreateAnAccountScreen({ navigation }) {
   const handleContinue = () => {
     const regex = selectedCountryData.regex;
     if (regex.test(phoneNumber)) {
-      // Navigate to HomeScreen if phone number is valid
-      navigation.navigate('Search Home Screen');
+      // Pass both phone number and selected country
+      navigation.navigate('Complete Your Account Screen', { phoneNumber, nation: selectedCountry });
     } else {
-      // Show error modal if phone number is invalid
       setIsErrorModalVisible(true);
     }
   };
-
   return (
     <View
       style={[
@@ -62,20 +74,17 @@ export default function CreateAnAccountScreen({ navigation }) {
         mainStyle.space_between_flex,
       ]}>
       <View></View>
+      <View style={[mainStyle.column_left_flex, mainStyle.width_full]}>
       <Text style={mainStyle.bold_text}>Create an account</Text>
-
-      <View style={mainStyle.column_left_flex}>
         <Text>Enter your mobile number:</Text>
 
         <View style={styles.phoneInputContainer}>
           {/* Dropdown to select country */}
-          <TouchableOpacity
+         <TouchableOpacity
             onPress={() => setIsModalVisible(true)}
-            style={styles.dropdown}>
-            <Image
-              source={selectedCountryData.image}
-              style={styles.countryFlag}
-            />
+            style={styles.dropdown}
+          >
+            {selectedCountryData.flagComponent}
             <Text style={styles.headNumberText}>
               {selectedCountryData.headNumber}
             </Text>
@@ -92,10 +101,10 @@ export default function CreateAnAccountScreen({ navigation }) {
         <View style={{ gap: 5, width: '100%' }}>
           <TouchableOpacity
             onPress={handleContinue}
-            style={[styles.aqua_button, mainStyle.row_center_flex]}>
+            style={[mainStyle.aqua_button, mainStyle.row_center_flex, mainStyle]}>
             <Text style={{ color: 'white' }}>Continue</Text>
           </TouchableOpacity>
-
+          <View style = {mainStyle.row_center_flex}><Text>OR</Text></View>
           {/* Continue with Apple */}
           <TouchableOpacity
             onPress={() => navigation.navigate('Search Home Screen')}
@@ -144,12 +153,14 @@ export default function CreateAnAccountScreen({ navigation }) {
           { width: '100%', alignSelf: 'flex-end' },
         ]}>
         <Text>Already have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Search Home Screen')}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Login Screen')}>
           <Text style={styles.log_in}>Log in</Text>
         </TouchableOpacity>
       </View>
 
       {/* Modal for country selection */}
+       {/* Modal for country selection */}
       <Modal visible={isModalVisible} transparent={true} animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -160,8 +171,9 @@ export default function CreateAnAccountScreen({ navigation }) {
               renderItem={({ item }) => (
                 <TouchableOpacity
                   onPress={() => handleCountrySelect(item)}
-                  style={styles.countryItem}>
-                  <Image source={item.image} style={styles.countryFlag} />
+                  style={styles.countryItem}
+                >
+                  {item.flagComponent}
                   <Text style={styles.modalCountryText}>
                     {item.headNumber} - {item.name.toUpperCase()}
                   </Text>
@@ -170,7 +182,8 @@ export default function CreateAnAccountScreen({ navigation }) {
             />
             <TouchableOpacity
               onPress={() => setIsModalVisible(false)}
-              style={styles.closeButton}>
+              style={styles.closeButton}
+            >
               <Text style={styles.closeButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -178,7 +191,10 @@ export default function CreateAnAccountScreen({ navigation }) {
       </Modal>
 
       {/* Modal for error message */}
-      <Modal visible={isErrorModalVisible} transparent={true} animationType="slide">
+      <Modal
+        visible={isErrorModalVisible}
+        transparent={true}
+        animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Invalid Phone Number</Text>
@@ -198,6 +214,7 @@ export default function CreateAnAccountScreen({ navigation }) {
 const styles = StyleSheet.create({
   phoneInputContainer: {
     flexDirection: 'row',
+    width:"100%",
     alignItems: 'center',
     borderBottomWidth: 1,
     borderColor: '#ccc',
@@ -267,12 +284,6 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: 'white',
     fontSize: 16,
-  },
-  aqua_button: {
-    backgroundColor: 'aqua',
-    width: '100%',
-    borderRadius: 5,
-    padding: 5,
   },
   apple_button: {
     backgroundColor: 'white',

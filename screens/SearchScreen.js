@@ -77,18 +77,19 @@ const SearchScreen = ({ navigation }) => {
 
   // Function to create the button text based on selected values
   const valueChoiceText = () => {
-  const guestCount = guests.adults + guests.children; // Total number of guests based on the number of adults and children
-  const dateText = isAnyTime ? 'Anytime' : formatDateRange(); // Check if it's "Anytime" to assign the value 'Anytime', otherwise get the selected date range
-  
-  return guestCount === 0
-    ? `${selectedDestination || 'Anywhere'} - ${dateText} - Add guests.`
-    : `${selectedDestination || 'Anywhere'} - ${dateText} - ${guestCount} Guests`; 
-};
+    const guestCount = guests.adults + guests.children; // Total number of guests based on the number of adults and children
+    const dateText = isAnyTime ? 'Anytime' : formatDateRange(); // Check if it's "Anytime" to assign the value 'Anytime', otherwise get the selected date range
+
+    return guestCount === 0
+      ? `${selectedDestination || 'Anywhere'} - ${dateText} - Add guests.`
+      : `${
+          selectedDestination || 'Anywhere'
+        } - ${dateText} - ${guestCount} Guests`;
+  };
   const commentSearch = `The search criteria will be: 
         1. Search by location: If 'Anywhere' is selected, there are no location limits; if a specific value is provided, it searches for items with the location field containing that string.
         2. Search by number of guests: If no guests are selected, it displays 'Add guests'; if a specific number is provided, it searches for items with totalGuests greater than or equal to that number.
         3. Search by date: If isAnyTime is true, there is no date restriction; if a date range is specified, it searches for items with startDate and endDate falling within that range.`;
-
 
   const handleSearch = () => {
     navigation.navigate('Search Home Screen', {
@@ -97,11 +98,7 @@ const SearchScreen = ({ navigation }) => {
         guests.adults + guests.children > 0
           ? guests.adults + guests.children
           : 'Add guests', // Default to 'Add guests' if there are no guests
-      when: isAnyTime
-        ? 'Anytime'
-        : confirmedDates.length > 0
-        ? confirmedDates
-        : 'No dates selected', // Default to 'Anytime' if isAnyTime is true, or 'No dates selected' if confirmedDates is empty
+      when: isAnyTime ? 'Anytime' : formatDateRange(), // Sử dụng formatDateRange thay vì confirmedDates
     });
   };
 

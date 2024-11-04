@@ -55,7 +55,7 @@ const Policies = () => {
             the owner/manager before your arrival so that you can...
           </Text>
           <TouchableOpacity
-            style={styles.closeButton}
+            style={mainStyle.aqua_button}
             onPress={() => setShowModal(false)}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
@@ -64,16 +64,9 @@ const Policies = () => {
     </View>
   );
 };
+import mainStyle from '../assets/stylesheet/StyleSheet.js';
+
 const styles = StyleSheet.create({
-  closeButton: {
-    marginTop: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    backgroundColor: 'aqua',
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   closeButtonText: {
     color: 'white',
     fontSize: 16,

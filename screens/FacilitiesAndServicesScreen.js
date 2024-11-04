@@ -7,25 +7,21 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 
 export default function FacilitiesAndServicesScreen({ navigation, route }) {
   // Get the item from route.params, with a fallback to an empty object
-  const { item = {} } = route.params || {};
-  const {
+ const { accommodation } = route.params; // Get the whole accommodation object
+ const {
     facilities = [],
-    totalGuests = 0,
-    roomsAndBeds: {
-      beds = 0,
-      bedroom: bedrooms = 0,
-      bathroom: bathrooms = 0,
-    } = {}, // Corrected destructuring
-  } = item;
-  useEffect(() => {
-    Alert.alert('Item Information', JSON.stringify(item, null, 2)); // Format item as a string for better readability
-  }, [item]); // This will run when the item changes
+    total_guests = 0,
+    bedroom = 0,
+    beds = 0,
+    bathroom = 0,
+  } = accommodation; // Destructure properties
 
-  // Mapping for icons associated with facilities
+  // Mapping of facilities to Unicode characters or emojis
   const iconMap = {
     kitchen: '🍽️', // Fork and knife
     pool: '🏊', // Person swimming
@@ -34,11 +30,10 @@ export default function FacilitiesAndServicesScreen({ navigation, route }) {
     wifi: '📶', // Wi-Fi signal
   };
 
-  // Transform facilities to include icons
   const facilitiesData =
-    facilities.map((facility) => ({
-      icon: iconMap[facility.toLowerCase()] || '❓', // Default icon if not found
-      title: facility.charAt(0).toUpperCase() + facility.slice(1), // Capitalize the first letter
+    facilities?.map((facility) => ({
+      icon: iconMap[facility.icon] || '❓', // Use icon from formatted facilities
+      title: facility.title, // Already formatted
     })) || [];
 
   // Sample data for services
@@ -54,15 +49,6 @@ export default function FacilitiesAndServicesScreen({ navigation, route }) {
     Entertainment: ['TV', 'Cable channels', 'Streaming services'],
     Outdoor: ['BBQ grill', 'Outdoor furniture', 'Garden'],
   };
-
-  // Render each facility item
-  const renderFacilityItem = ({ item }) => (
-    <View style={styles.facilityItem}>
-      <Text style={styles.iconText}>{item.icon}</Text>
-      <Text style={styles.facilityText}>{item.title}</Text>
-    </View>
-  );
-
   // Render each service item with a title
   const renderServiceItem = (title, items) => (
     <View style={styles.serviceContainer} key={title}>
@@ -80,33 +66,38 @@ export default function FacilitiesAndServicesScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
-        {/* Back button */}
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>←</Text>{' '}
-          {/* You can replace this with an icon */}
+          <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
 
         <Text style={styles.headerText}>Facilities and Services</Text>
       </View>
 
       <ScrollView style={styles.scrollContainer}>
+        {/* Display accommodation image */}
         <Text style={styles.subHeader}>Facilities</Text>
 
-        <View style={styles.summaryContainer}>
+        <View style={[styles.summaryContainer, { marginLeft: 5 }]}>
           <Text style={styles.summaryText}>
-            {totalGuests} guest{totalGuests !== 1 && 's'}, {beds} bed
-            {beds !== 1 && 's'}, {bedrooms} bedroom{bedrooms !== 1 && 's'},{' '}
-            {bathrooms} bathroom{bathrooms !== 1 && 's'}
+            {total_guests} guest{total_guests !== 1 && 's'}, {beds} bed
+            {beds !== 1 && 's'}, {bedroom} bedroom{bedroom !== 1 && 's'},{' '}
+            {bathroom} bathroom{bathroom !== 1 && 's'}
           </Text>
         </View>
 
         <FlatList
-          data={facilitiesData.slice(0, 3)} // Show only a few facilities
-          keyExtractor={(facility) => facility.title}
-          renderItem={renderFacilityItem}
-        />
+        data={facilitiesData} // Show only a few facilities
+        keyExtractor={(facility) => facility.title}
+        renderItem={({ item }) => (
+          <View style={styles.facilityItem}>
+            <Text style={styles.iconText}>{item.icon}</Text>{' '}
+            {/* Use text for emoji */}
+            <Text style={styles.facilityText}>{item.title}</Text>
+          </View>
+        )}
+      />
 
         <Text style={styles.subHeader}>Services</Text>
         {Object.entries(servicesData).map(([title, items]) =>
@@ -123,7 +114,7 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: '#fff', // Set background color to white
   },
-  backButton: { 
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20, // Make it circular
@@ -144,6 +135,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     borderBottomWidth: 1, // Add a bottom border for separation
     borderBottomColor: '#ccc',
+    marginTop: 20,
   },
   facilityItem: {
     flexDirection: 'row',
@@ -191,7 +183,13 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between', // Adjusted for alignment
     alignItems: 'center',
+  },
+  image: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+    marginBottom: 10,
   },
 });

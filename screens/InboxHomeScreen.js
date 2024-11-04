@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Image, Text } from 'react-native';
 import { GiftedChat, Send } from 'react-native-gifted-chat';
-
+import BottomNavigation from '../assets/components/BottomNavigation';
+import mainStyle from '../assets/stylesheet/StyleSheet.js';
 const InboxHomeScreen = ({ navigation , item}) => {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState(''); // State to hold the text input
@@ -113,7 +114,7 @@ const InboxHomeScreen = ({ navigation , item}) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={mainStyle.container}>
       <GiftedChat
         messages={messages}
         onSend={(messages) => onSend(messages)}
@@ -133,28 +134,7 @@ const InboxHomeScreen = ({ navigation , item}) => {
       {renderEmojiButtons()}
 
       {/* Bottom navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => navigation.navigate('Search Home Screen')} style={styles.navItem}>
-          <Image source={require('../assets/images/icons/search.svg')} style={styles.navIcon} />
-          <Text style={styles.navText}>Search</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Favorite Home Screen')} style={styles.navItem}>
-          <Image source={require('../assets/images/icons/white_heart.svg')} style={styles.navIcon} />
-          <Text style={styles.navText}>Favorites</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Booking Home Screen')} style={styles.navItem}>
-          <Image source={require('../assets/images/icons/booking.svg')} style={styles.navIcon} />
-          <Text style={styles.navText}>Bookings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Inbox Home Screen')} style={styles.navItem}>
-          <Image source={require('../assets/images/icons/inbox.svg')} style={styles.navIcon} />
-          <Text style={styles.navTextActive}>Inbox</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile Home Screen')} style={styles.navItem}>
-          <Image source={require('../assets/images/icons/profile.svg')} style={styles.navIcon} />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNavigation navigation={navigation} />
     </View>
   );
 };
@@ -177,29 +157,6 @@ const styles = StyleSheet.create({
   emojiButton: {
     fontSize: 24,
     padding: 5,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-  },
-  navItem: {
-    alignItems: 'center',
-    padding: 5,
-  },
-  navIcon: {
-    width: 24,
-    height: 24,
-    marginBottom: 5,
-  },
-  navText: {
-    color: '#888',
-  },
-  navTextActive: {
-    color: '#00BCD4', // Aqua color for active tab
-    fontWeight: 'bold',
   },
 });
 

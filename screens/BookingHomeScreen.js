@@ -1,99 +1,117 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
   Image,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   Pressable,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import mainStyle from '../assets/stylesheet/StyleSheet.js';
+import { ActiveTabContext } from '../ActiveTabContext'; // Import the context
+import BottomNavigation from '../assets/components/BottomNavigation';
 
-const BookingHomeScreen = ({ navigation, data, paymentData }) => {
+const BookingHomeScreen = ({
+  navigation,
+  route,
+  accUserRelations = [],
+  user,
+  accommodations,
+}) => {
+  const { setActiveTab } = useContext(ActiveTabContext); // Access setActiveTab from context
   const [hoveredId, setHoveredId] = useState(null);
+  const [filteredData, setFilteredData] = useState([]);
 
-  // Lọc các item có trong paymentData
-  const filteredData = data.filter(item =>
-    paymentData.some(payment => payment.id === item.id)
-  );
+  useEffect(() => {
+    // Set the active tab to "Bookings" when the component mounts
+    setActiveTab('Bookings');
+  }, [setActiveTab]); // Dependency array includes setActiveTab to avoid warnings
+
+  useEffect(() => {
+    // Filter the accommodations based on accUserRelations
+    const newFilteredData = accommodations.filter((item) =>
+      accUserRelations.some(
+        (relation) =>
+          relation.acc_id === item.id &&
+          relation.user_id === user.id &&
+          relation.amount !== null &&
+          relation.amount !== 0
+      )
+    );
+    setFilteredData(newFilteredData);
+  }, [accUserRelations, accommodations, user.id]);
 
   const renderItem = ({ item }) => {
-    // Lấy thông tin thanh toán từ paymentData
-    const paymentInfo = paymentData.find(payment => payment.id === item.id);
-    const amount = paymentInfo ? paymentInfo.amount : 'N/A'; // Hiển thị số tiền hoặc 'N/A'
-    const bookingDate = paymentInfo ? `${paymentInfo.date} at ${paymentInfo.time}` : 'N/A';
+    const paymentInfo = accUserRelations.find(
+      (relation) => relation.acc_id === item.id && relation.user_id === user.id
+    );
+
+    const amount = paymentInfo ? paymentInfo.amount : 'Not Applicable';
+    const bookingDate = paymentInfo
+      ? `${new Date(paymentInfo.date).toLocaleDateString('en-CA')} at ${new Date(paymentInfo.date).toLocaleTimeString('en-CA', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        })}`
+      : 'Not Applicable';
 
     return (
       <Pressable
         onMouseEnter={() => setHoveredId(item.id)}
         onMouseLeave={() => setHoveredId(null)}
-        style={[
-          styles.card,
-          hoveredId === item.id && styles.cardHovered,
-        ]}
-        onPress={() => navigation.navigate('Booking Location Detail Screen', { item })}
-      >
-        <Image source={item.image} style={styles.image} />
+        style={[styles.card, hoveredId === item.id && styles.cardHovered]}
+        onPress={() =>
+          navigation.navigate('Booking Location Detail Screen', {
+            item,
+            user,
+            accUserRelations,
+          })
+        }>
+        <Image source={item.image_path} style={styles.image} />
         <View style={styles.infoContainer}>
           <Text style={styles.title}>{item.title}</Text>
-
-          {/* Số tiền */}
           <View style={styles.iconRow}>
             <Icon name="dollar" size={18} color="#00AEEF" />
-            <Text style={styles.amount}>${amount}</Text>
+            <Text style={styles.amount}>{amount}</Text>
           </View>
-
-          {/* Đánh giá */}
           <View style={styles.iconRow}>
             <Icon name="star" size={18} color="#FFD700" />
             <Text style={styles.rating}>{item.rating}</Text>
           </View>
-
-          {/* Quốc gia */}
           <View style={styles.iconRow}>
             <Icon name="flag" size={18} color="gray" />
-            <Text style={styles.country}>{item.country} - {item.location}</Text>
+            <Text style={styles.country}>
+              {item.country} - {item.location}
+            </Text>
           </View>
-
-          {/* Loại chỗ ở */}
           <View style={styles.iconRow}>
             <Icon name="home" size={18} color="gray" />
-            <Text style={styles.infoText}>{item.typeOfPlace}</Text>
+            <Text style={styles.infoText}>{item.type}</Text>
           </View>
-
-          {/* Số khách */}
           <View style={styles.iconRow}>
             <Icon name="users" size={18} color="gray" />
-            <Text style={styles.infoText}>Guests: {item.totalGuests}</Text>
+            <Text style={styles.infoText}>Guests: {item.total_guests}</Text>
           </View>
-
-          {/* Số giường và phòng */}
           <View style={styles.iconRow}>
             <Icon name="bed" size={18} color="gray" />
             <Text style={styles.infoText}>
-              {item.roomsAndBeds.beds} beds, {item.roomsAndBeds.bedroom} bedrooms
+              {item.beds} beds, {item.bedroom} bedrooms
             </Text>
           </View>
-
-          {/* Số phòng tắm */}
           <View style={styles.iconRow}>
             <Icon name="shower" size={18} color="gray" />
-            <Text style={styles.infoText}>{item.roomsAndBeds.bathroom} bathrooms</Text>
+            <Text style={styles.infoText}>{item.bathroom} bathrooms</Text>
           </View>
-
-          {/* Ngày đặt và thời gian */}
           <View style={styles.iconRow}>
             <Icon name="calendar" size={18} color="gray" />
             <Text style={styles.infoText}>Booking: {bookingDate}</Text>
           </View>
-
-          {/* Ngày bắt đầu và kết thúc */}
           <View style={styles.iconRow}>
             <Icon name="clock-o" size={18} color="gray" />
             <Text style={styles.infoText}>
-              {item.startDate} to {item.endDate}
+              {new Date(item.start_date).toLocaleDateString('en-CA')} to{' '}
+              {new Date(item.end_date).toLocaleDateString('en-CA')}
             </Text>
           </View>
         </View>
@@ -107,56 +125,15 @@ const BookingHomeScreen = ({ navigation, data, paymentData }) => {
       <FlatList
         data={filteredData}
         renderItem={renderItem}
-        keyExtractor={item => item.id.toString()} // Đảm bảo id là chuỗi
+        keyExtractor={(item) => item.id.toString()} 
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={true}
       />
       {filteredData.length === 0 && (
         <Text style={styles.noBookingsText}>No bookings found!</Text>
       )}
-      {/* Thanh điều hướng ở cuối */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Search Home Screen')}
-          style={styles.navItem}>
-          <Image
-            source={require('../assets/images/icons/search.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Search</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Favorite Home Screen')}
-          style={styles.navItem}>
-          <Image
-            source={require('../assets/images/icons/white_heart.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Favorites</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}
-          onPress={() => navigation.navigate('Booking Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/booking.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navTextActive}>Bookings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Inbox Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/inbox.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Inbox</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile Home Screen')}>
-          <Image
-            source={require('../assets/images/icons/profile.svg')}
-            style={styles.navIcon}
-          />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Bottom Navigation */}
+      <BottomNavigation navigation={navigation} />
     </View>
   );
 };
@@ -175,7 +152,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   cardHovered: {
-    borderColor: '#00AEEF', // Viền đèn LED khi hover
+    borderColor: '#00AEEF',
     shadowColor: '#00AEEF',
     shadowOpacity: 0.8,
     shadowRadius: 10,
@@ -224,28 +201,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 20,
     color: 'gray',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navIcon: {
-    width: 24,
-    height: 24,
-    marginBottom: 5,
-  },
-  navText: {
-    color: '#888',
-  },
-  navTextActive: {
-    color: '#00BCD4',
-    fontWeight: 'bold',
   },
 });
 
